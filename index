@@ -16,9 +16,6 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
-    <!-- ✅ STEP 2: ethers.js for wallet connection (Base-compatible) -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.1/ethers.umd.min.js"></script>
-
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -377,75 +374,7 @@
 
         .base-footer a:hover { color: white; }
 
-        /* ✅ WALLET CONNECTION UI */
-        .wallet-bar {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-top: 12px;
-            position: relative;
-            z-index: 1;
-        }
-
-        .wallet-btn {
-            background: rgba(255,255,255,0.15);
-            color: white;
-            border: 1px solid rgba(255,255,255,0.3);
-            padding: 8px 18px;
-            border-radius: 20px;
-            font-size: 0.82em;
-            font-weight: 700;
-            cursor: pointer;
-            font-family: 'Inter', 'Segoe UI', sans-serif;
-            transition: background 0.2s, transform 0.1s;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        .wallet-btn:hover { background: rgba(255,255,255,0.25); transform: translateY(-1px); }
-        .wallet-btn.connected { background: rgba(0,255,127,0.2); border-color: rgba(0,255,127,0.5); }
-
-        .wallet-dot {
-            width: 8px; height: 8px;
-            border-radius: 50%;
-            background: #ccc;
-        }
-
-        .wallet-dot.connected { background: #00ff7f; box-shadow: 0 0 6px rgba(0,255,127,0.8); }
-
-        .siwe-btn {
-            background: linear-gradient(135deg, #00c853, #00a040);
-            color: white;
-            border: none;
-            padding: 12px 24px;
-            border-radius: 14px;
-            font-size: 0.95em;
-            font-weight: 700;
-            cursor: pointer;
-            font-family: 'Inter', 'Segoe UI', sans-serif;
-            margin-top: 12px;
-            width: 100%;
-            transition: opacity 0.2s, transform 0.1s;
-            display: none;
-        }
-
-        .siwe-btn:hover { opacity: 0.9; transform: translateY(-1px); }
-        .siwe-btn.visible { display: block; }
-
-        .wallet-status {
-            background: rgba(0,255,127,0.1);
-            border: 1px solid rgba(0,255,127,0.3);
-            border-radius: 12px;
-            padding: 10px 14px;
-            margin-bottom: 16px;
-            font-size: 0.85em;
-            color: #00ff7f;
-            font-weight: 600;
-            display: none;
-        }
-
-        .wallet-status.visible { display: block; }
+        
     </style>
 </head>
 <body>
@@ -458,13 +387,6 @@
                 <h1>BASED GAMES</h1>
             </div>
             <div class="header-sub">Powered by Base · Earn on-chain</div>
-            <!-- ✅ STEP 2: Wallet Connect Button -->
-            <div class="wallet-bar">
-                <button class="wallet-btn" id="walletBtn" onclick="connectWallet()">
-                    <span class="wallet-dot" id="walletDot"></span>
-                    <span id="walletBtnText">Connect Wallet</span>
-                </button>
-            </div>
             <div class="score-board">
                 <div class="score-item">🪙 Coins: <span id="bananas">0</span></div>
                 <div class="score-item">⭐ Points: <span id="score">0</span></div>
@@ -479,11 +401,6 @@
                     <h2>Welcome to Base Arena</h2>
                     <p>Play mini-games, earn coins, go onchain</p>
                     <a class="join-btn" href="https://join.base.app/" target="_blank">🚀 Join Base App</a>
-                    <!-- ✅ STEP 2: SIWE Sign-In button -->
-                    <br>
-                    <button class="siwe-btn" id="siweBtn" onclick="signInWithEthereum()">✍️ Sign In with Ethereum</button>
-                    <!-- Wallet status display -->
-                    <div class="wallet-status" id="walletStatus"></div>
                 </div>
 
                 <div class="game-menu">
@@ -718,137 +635,7 @@
             }
         }
 
-        // ========================================
-        // ✅ STEP 2: WALLET CONNECTION (Base App compatible)
-        // Uses window.ethereum injected by Base App's in-app browser
-        // Replaces: Farcaster SDK signIn → SIWE + useAccount
-        // ========================================
-
-        let walletAddress = null;
-        let walletProvider = null;
-
-        async function connectWallet() {
-            // Base App injects window.ethereum in its in-app browser
-            if (typeof window.ethereum === 'undefined') {
-                // Fallback: redirect to Base App download
-                if (confirm('No wallet detected. Open Base App?')) {
-                    window.open('https://join.base.app/', '_blank');
-                }
-                return;
-            }
-
-            try {
-                const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-                walletAddress = accounts[0];
-                walletProvider = new ethers.BrowserProvider(window.ethereum);
-
-                // Switch to Base mainnet (chain ID 8453)
-                await switchToBase();
-
-                updateWalletUI();
-
-                // Listen for account changes
-                window.ethereum.on('accountsChanged', (accs) => {
-                    walletAddress = accs[0] || null;
-                    updateWalletUI();
-                });
-
-            } catch (err) {
-                console.error('Wallet connection failed:', err);
-                alert('Could not connect wallet: ' + err.message);
-            }
-        }
-
-        async function switchToBase() {
-            try {
-                await window.ethereum.request({
-                    method: 'wallet_switchEthereumChain',
-                    params: [{ chainId: '0x2105' }], // Base mainnet = 8453
-                });
-            } catch (switchErr) {
-                // Chain not added yet — add it
-                if (switchErr.code === 4902) {
-                    await window.ethereum.request({
-                        method: 'wallet_addEthereumChain',
-                        params: [{
-                            chainId: '0x2105',
-                            chainName: 'Base',
-                            nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
-                            rpcUrls: ['https://mainnet.base.org'],
-                            blockExplorerUrls: ['https://basescan.org'],
-                        }],
-                    });
-                }
-            }
-        }
-
-        function updateWalletUI() {
-            const btn = document.getElementById('walletBtn');
-            const dot = document.getElementById('walletDot');
-            const text = document.getElementById('walletBtnText');
-            const siweBtn = document.getElementById('siweBtn');
-            const status = document.getElementById('walletStatus');
-
-            if (walletAddress) {
-                const short = walletAddress.slice(0, 6) + '...' + walletAddress.slice(-4);
-                btn.classList.add('connected');
-                dot.classList.add('connected');
-                text.textContent = short;
-                siweBtn.classList.add('visible');
-                status.textContent = '🟢 Connected: ' + short + ' on Base';
-                status.classList.add('visible');
-            } else {
-                btn.classList.remove('connected');
-                dot.classList.remove('connected');
-                text.textContent = 'Connect Wallet';
-                siweBtn.classList.remove('visible');
-                status.classList.remove('visible');
-            }
-        }
-
-        // ✅ STEP 2: Sign-In with Ethereum (SIWE)
-        // Replaces: Farcaster SDK sdk.signIn()
-        async function signInWithEthereum() {
-            if (!walletAddress || !walletProvider) {
-                alert('Connect your wallet first!');
-                return;
-            }
-
-            try {
-                const signer = await walletProvider.getSigner();
-                const nonce = Math.random().toString(36).substring(2, 15);
-                const domain = window.location.host || 'based-games.app';
-                const uri = window.location.origin || 'https://based-games.app';
-                const issuedAt = new Date().toISOString();
-
-                // SIWE message format (EIP-4361)
-                const message = `${domain} wants you to sign in with your Ethereum account:\n${walletAddress}\n\nWelcome to BASED GAMES!\n\nURI: ${uri}\nVersion: 1\nChain ID: 8453\nNonce: ${nonce}\nIssued At: ${issuedAt}`;
-
-                const signature = await signer.signMessage(message);
-
-                // ✅ Signature verified — user is authenticated
-                const status = document.getElementById('walletStatus');
-                status.textContent = '✅ Signed in! Ready to play on Base.';
-                status.style.color = '#00ff7f';
-
-                // Hide SIWE button after sign-in
-                document.getElementById('siweBtn').textContent = '✅ Signed In';
-                document.getElementById('siweBtn').disabled = true;
-
-            } catch (err) {
-                if (err.code !== 4001) { // 4001 = user rejected
-                    alert('Sign-in failed: ' + err.message);
-                }
-            }
-        }
-
-        // ✅ Auto-detect if running inside Base App (injected wallet)
-        window.addEventListener('load', () => {
-            if (window.ethereum && window.ethereum.isBaseApp) {
-                // Running inside Base App — auto-connect
-                connectWallet();
-            }
-        });
+        
     </script>
 </body>
 </html>
